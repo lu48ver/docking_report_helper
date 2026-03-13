@@ -2,10 +2,9 @@ import tkinter as tk
 import ttkbootstrap as ttk
 from ttkbootstrap.constants import *
 from datetime import datetime
-import threading
 import queue
 
-from ui.constants import BTN_GENERATE
+from ui.constants import BTN_GENERATE, SECTION_FONT, HINT_FONT, LBL_W
 
 
 class ReportOutputPanel(ttk.Frame):
@@ -24,72 +23,108 @@ class ReportOutputPanel(ttk.Frame):
 
         self._build_ui()
 
-    # Light-theme canvas palette（柔和，搭配 litera 主題）
+    # ── Canvas palette (litera theme) ────────────────────────
     _C_BG      = "#f8f9fa"
     _C_BORDER  = "#ced4da"
-    _C_HEADER  = "#4582ec"   # litera primary（比原本 #2c6fad 更柔和）
+    _C_HEADER  = "#4582ec"
     _C_HDR_TXT = "#ffffff"
-    _C_PHOTO   = "#e8f0fe"   # 淡藍色取代灰色，更清爽
+    _C_PHOTO   = "#e8f0fe"
     _C_PHO_TXT = "#6c757d"
 
+    # ── Static helpers ────────────────────────────────────────
+
+    @staticmethod
+    def _section_header(parent, title):
+        """Flat section header: bold label + expanding separator."""
+        hdr = ttk.Frame(parent)
+        hdr.pack(fill=X, pady=(0, 8))
+        ttk.Label(hdr, text=title,
+                  font=SECTION_FONT, bootstyle="secondary").pack(side=LEFT)
+        ttk.Separator(hdr, orient="horizontal").pack(
+            side=LEFT, fill=X, expand=True, padx=(8, 0))
+
+    # ── UI construction ───────────────────────────────────────
+
     def _build_ui(self):
-        # Template selector
+        # ── Template selector ────────────────────────────────
         from ui.template_selector import TemplateSelector
         self.template_selector = TemplateSelector(self, self.template_manager)
-        self.template_selector.pack(fill=BOTH, padx=14, pady=(12, 6), expand=False)
+        self.template_selector.pack(fill=X, padx=16, pady=(12, 0))
 
-        # ── Table layout selection + preview ────────────────
-        layout_frame = ttk.LabelFrame(self, text=" 📐  表格版面")
-        layout_frame.pack(fill=X, padx=14, pady=6)
+        ttk.Separator(self, orient="horizontal").pack(
+            fill=X, padx=16, pady=(8, 0))
 
-        # Left side: radio buttons
-        radio_frame = ttk.Frame(layout_frame)
-        radio_frame.pack(side=LEFT, padx=8, pady=6, anchor=N)
+        # ── Middle row: layout+canvas  LEFT | output info RIGHT ─
+        mid = ttk.Frame(self, padding=(16, 8))
+        mid.pack(fill=X)
 
+        # ── LEFT pane: radio buttons + canvas ─────────────────
+        left_pane = ttk.Frame(mid)
+        left_pane.pack(side=LEFT, anchor=N, padx=(0, 20))
+
+        self._section_header(left_pane, "📐  表格版面")
+
+        # Radio buttons in one horizontal row
+        radio_row = ttk.Frame(left_pane)
+        radio_row.pack(fill=X, pady=(0, 8))
         self.layout_var = ttk.StringVar(value=self._initial_layout)
-        layouts = [
+        for text, value in [
             ("跨欄置中", "span"),
             ("單欄排列", "single"),
             ("雙欄並排", "grid"),
-        ]
-        for text, value in layouts:
-            rb = ttk.Radiobutton(
-                radio_frame, text=text, value=value,
+        ]:
+            ttk.Radiobutton(
+                radio_row, text=text, value=value,
                 variable=self.layout_var,
                 command=self._on_layout_changed,
-            )
-            rb.pack(anchor=W, pady=4)
+            ).pack(side=LEFT, padx=(0, 20))
 
-        # Right side: canvas preview
+        # Preview canvas
         self.preview_canvas = tk.Canvas(
-            layout_frame, width=340, height=180,
+            left_pane,
+            width=340, height=170,
             bg=self._C_BG,
-            highlightthickness=1, highlightbackground="#ced4da",
+            highlightthickness=1,
+            highlightbackground=self._C_BORDER,
         )
-        self.preview_canvas.pack(side=LEFT, padx=12, pady=8)
-
-        # Draw initial preview
+        self.preview_canvas.pack()
         self.after(100, self._draw_preview)
 
-        # ── Output info ─────────────────────────────────────
-        output_frame = ttk.LabelFrame(self, text=" 📋  輸出資訊")
-        output_frame.pack(fill=X, padx=14, pady=6)
+        # ── RIGHT pane: output info ────────────────────────────
+        right_pane = ttk.Frame(mid)
+        right_pane.pack(side=LEFT, anchor=N, fill=X, expand=True)
 
-        ttk.Label(output_frame, text="輸出檔名:", width=10, anchor=E).grid(
+        self._section_header(right_pane, "📋  輸出資訊")
+
+        info_grid = ttk.Frame(right_pane)
+        info_grid.pack(fill=X)
+        info_grid.columnconfigure(1, weight=1)
+
+        ttk.Label(info_grid, text="輸出檔名",
+                  width=LBL_W, anchor=E,
+                  font=HINT_FONT, bootstyle="secondary").grid(
             row=0, column=0, sticky=E, pady=5)
-        self.filename_label = ttk.Label(output_frame, text="— 請先設定日期與部門 —",
-                                        bootstyle="primary", font=("", 10))
-        self.filename_label.grid(row=0, column=1, sticky=W, padx=10, pady=5)
+        self.filename_label = ttk.Label(
+            info_grid, text="— 請先設定日期與部門 —",
+            bootstyle="primary", font=("", 9))
+        self.filename_label.grid(
+            row=0, column=1, sticky=W, padx=(10, 0), pady=5)
 
-        ttk.Label(output_frame, text="資料筆數:", width=10, anchor=E).grid(
+        ttk.Label(info_grid, text="資料筆數",
+                  width=LBL_W, anchor=E,
+                  font=HINT_FONT, bootstyle="secondary").grid(
             row=1, column=0, sticky=E, pady=5)
-        self.preview_label = ttk.Label(output_frame, text="尚未載入資料",
-                                       bootstyle="secondary")
-        self.preview_label.grid(row=1, column=1, sticky=W, padx=10, pady=5)
+        self.preview_label = ttk.Label(
+            info_grid, text="尚未載入資料",
+            bootstyle="secondary", font=("", 9))
+        self.preview_label.grid(
+            row=1, column=1, sticky=W, padx=(10, 0), pady=5)
 
-        # Generate button — prominent, centred
-        btn_frame = ttk.Frame(self)
-        btn_frame.pack(fill=X, pady=12)
+        # ── Generate button ── prominent, centred ─────────────
+        ttk.Separator(self, orient="horizontal").pack(
+            fill=X, padx=16, pady=(0, 0))
+        btn_frame = ttk.Frame(self, padding=(0, 10))
+        btn_frame.pack(fill=X)
         self.generate_btn = ttk.Button(
             btn_frame,
             text="  ▶  產生報告  ",
@@ -99,19 +134,25 @@ class ReportOutputPanel(ttk.Frame):
         )
         self.generate_btn.pack(anchor=CENTER)
 
-        # Log area
-        log_frame = ttk.LabelFrame(self, text=" 📝  執行記錄")
-        log_frame.pack(fill=BOTH, expand=True, padx=14, pady=(4, 12))
+        # ── Log area ──────────────────────────────────────────
+        ttk.Separator(self, orient="horizontal").pack(
+            fill=X, padx=16, pady=(0, 4))
 
-        self.log_text = ttk.Text(log_frame, height=8, state="disabled",
-                                 wrap="word", font=("Consolas", 9))
-        scrollbar = ttk.Scrollbar(log_frame, orient="vertical",
+        log_outer = ttk.Frame(self, padding=(16, 0, 16, 12))
+        log_outer.pack(fill=BOTH, expand=True)
+
+        self._section_header(log_outer, "📝  執行記錄")
+
+        self.log_text = ttk.Text(log_outer, height=8,
+                                 state="disabled", wrap="word",
+                                 font=("Consolas", 9))
+        scrollbar = ttk.Scrollbar(log_outer, orient="vertical",
                                   command=self.log_text.yview)
         self.log_text.configure(yscrollcommand=scrollbar.set)
         scrollbar.pack(side=RIGHT, fill=Y)
         self.log_text.pack(fill=BOTH, expand=True)
 
-    # ── Canvas preview drawing ──────────────────────────────
+    # ── Canvas preview ────────────────────────────────────────
 
     def _on_layout_changed(self):
         self._draw_preview()
@@ -120,7 +161,7 @@ class ReportOutputPanel(ttk.Frame):
         c = self.preview_canvas
         c.delete("all")
         layout = self.layout_var.get()
-        tasks = self._sample_tasks[:2]  # Show 2 sample tasks
+        tasks = self._sample_tasks[:2]
 
         if layout == "span":
             self._draw_span_preview(c, tasks)
@@ -130,22 +171,17 @@ class ReportOutputPanel(ttk.Frame):
             self._draw_grid_preview(c, tasks)
 
     def _draw_span_preview(self, c, tasks):
-        """Draw span layout: merged header + 2-col blank row."""
         x0, y = 20, 15
         w = 300
         half = w // 2
-        header_h = 28
-        photo_h = 45
+        header_h, photo_h = 28, 45
 
         for task in tasks:
-            # Merged header row
             c.create_rectangle(x0, y, x0 + w, y + header_h,
                                 fill=self._C_HEADER, outline=self._C_BORDER)
             c.create_text(x0 + w // 2, y + header_h // 2, text=task,
                           font=("", 9, "bold"), fill=self._C_HDR_TXT)
             y += header_h
-
-            # Photo row — 2 cells
             c.create_rectangle(x0, y, x0 + half, y + photo_h,
                                 fill=self._C_PHOTO, outline=self._C_BORDER)
             c.create_rectangle(x0 + half, y, x0 + w, y + photo_h,
@@ -154,39 +190,31 @@ class ReportOutputPanel(ttk.Frame):
                           text="照片", font=("", 8), fill=self._C_PHO_TXT)
             c.create_text(x0 + half + half // 2, y + photo_h // 2,
                           text="照片", font=("", 8), fill=self._C_PHO_TXT)
-            y += photo_h + 3
+            y += photo_h + 4
 
     def _draw_single_preview(self, c, tasks):
-        """Draw single column layout."""
         x0, y = 20, 15
         w = 300
-        content_h = 28
-        photo_h = 45
+        content_h, photo_h = 28, 45
 
         for task in tasks:
-            # Content row
             c.create_rectangle(x0, y, x0 + w, y + content_h,
                                 fill=self._C_HEADER, outline=self._C_BORDER)
             c.create_text(x0 + 10, y + content_h // 2, text=task,
                           font=("", 9, "bold"), fill=self._C_HDR_TXT, anchor=W)
             y += content_h
-
-            # Photo row
             c.create_rectangle(x0, y, x0 + w, y + photo_h,
                                 fill=self._C_PHOTO, outline=self._C_BORDER)
             c.create_text(x0 + w // 2, y + photo_h // 2,
                           text="照片", font=("", 8), fill=self._C_PHO_TXT)
-            y += photo_h + 3
+            y += photo_h + 4
 
     def _draw_grid_preview(self, c, tasks):
-        """Draw 2-column grid layout."""
         x0, y = 20, 15
         w = 300
         half = w // 2
-        content_h = 28
-        blank_h = 45
+        content_h, blank_h = 28, 45
 
-        # Content row
         c.create_rectangle(x0, y, x0 + half, y + content_h,
                             fill=self._C_HEADER, outline=self._C_BORDER)
         c.create_rectangle(x0 + half, y, x0 + w, y + content_h,
@@ -198,8 +226,6 @@ class ReportOutputPanel(ttk.Frame):
             c.create_text(x0 + half + 8, y + content_h // 2, text=tasks[1],
                           font=("", 9, "bold"), fill=self._C_HDR_TXT, anchor=W)
         y += content_h
-
-        # Blank row
         c.create_rectangle(x0, y, x0 + half, y + blank_h,
                             fill=self._C_PHOTO, outline=self._C_BORDER)
         c.create_rectangle(x0 + half, y, x0 + w, y + blank_h,
@@ -210,11 +236,10 @@ class ReportOutputPanel(ttk.Frame):
                       text="照片", font=("", 8), fill=self._C_PHO_TXT)
 
     def set_sample_tasks(self, tasks: list):
-        """Update sample tasks for preview (first 2-3 items)."""
         self._sample_tasks = [t[1] for t in tasks[:3]] if tasks else ["Task A", "Task B"]
         self._draw_preview()
 
-    # ── Public API ──────────────────────────────────────────
+    # ── Public API ────────────────────────────────────────────
 
     def get_table_layout(self) -> str:
         return self.layout_var.get()

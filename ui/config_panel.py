@@ -8,7 +8,11 @@ import openpyxl
 import threading
 
 from core.weather_service import WeatherService
-from ui.constants import PX, PY_S, PY_B, PYW, BTN_BROWSE, BTN_ACTION, BTN_PRIMARY
+from ui.constants import (
+    PX, PY_S, PY_B, PYW,
+    SECTION_FONT, HINT_FONT, LBL_W,
+    BTN_BROWSE, BTN_ACTION, BTN_PRIMARY,
+)
 
 
 class ConfigPanel(ttk.Frame):
@@ -28,144 +32,202 @@ class ConfigPanel(ttk.Frame):
     # UI construction
     # ──────────────────────────────────────────────────────────────────────
 
+    # ──────────────────────────────────────────────────────────────────────
+    # Section header helper
+    # ──────────────────────────────────────────────────────────────────────
+
+    @staticmethod
+    def _make_section(parent, title):
+        """Modern flat section header: TITLE ─────────────  followed by body frame."""
+        wrapper = ttk.Frame(parent)
+        wrapper.pack(fill=X, padx=PX, pady=PY_S)
+        # Header row
+        hdr = ttk.Frame(wrapper)
+        hdr.pack(fill=X, pady=(0, 10))
+        ttk.Label(hdr, text=title, font=SECTION_FONT,
+                  bootstyle="secondary").pack(side=LEFT)
+        ttk.Separator(hdr, orient="horizontal").pack(
+            side=LEFT, fill=X, expand=True, padx=(8, 0))
+        # Body
+        body = ttk.Frame(wrapper)
+        body.pack(fill=X, padx=4)
+        body.columnconfigure(1, weight=1)
+        return body
+
+    # ──────────────────────────────────────────────────────────────────────
+    # UI construction
+    # ──────────────────────────────────────────────────────────────────────
+
     def _build_ui(self):
-        # 捲動外框 — 視窗縮小時設定頁可捲動
+        # Scrollable container
         sf = ScrolledFrame(self, autohide=True)
         sf.pack(fill=BOTH, expand=True)
-        container = sf
-        self._sf_container = sf   # _build_weather_ui 也要用到
+        self._sf_container = sf
 
-        PF = dict(padx=PX, pady=PY_S)
-        GX = dict(padx=(0, 8), pady=PYW)
+        # ════════════════════════════════════════════════════════
+        # Section 1  資料來源
+        # 合併：Excel 路徑 + 輸出資料夾 + 工作表 + 載入按鈕
+        # ════════════════════════════════════════════════════════
+        s1 = self._make_section(sf, "資料來源")
 
-        # === File Paths ===
-        file_frame = ttk.LabelFrame(container, text=" 📁  檔案路徑")
-        file_frame.pack(fill=X, **PF)
-
-        ttk.Label(file_frame, text="Excel 檔案:").grid(row=0, column=0, sticky=W, pady=PYW)
+        ttk.Label(s1, text="Excel 檔案:", width=LBL_W, anchor=E).grid(
+            row=0, column=0, sticky=E, pady=PYW)
         self.excel_var = ttk.StringVar()
-        ttk.Entry(file_frame, textvariable=self.excel_var).grid(
+        ttk.Entry(s1, textvariable=self.excel_var).grid(
             row=0, column=1, sticky=EW, padx=8, pady=PYW)
-        ttk.Button(file_frame, text="瀏覽…", command=self._browse_excel,
+        ttk.Button(s1, text="瀏覽…", command=self._browse_excel,
                    bootstyle=BTN_BROWSE, width=8).grid(row=0, column=2, pady=PYW)
 
-        ttk.Label(file_frame, text="輸出資料夾:").grid(row=1, column=0, sticky=W, pady=PYW)
+        ttk.Label(s1, text="輸出資料夾:", width=LBL_W, anchor=E).grid(
+            row=1, column=0, sticky=E, pady=PYW)
         self.output_var = ttk.StringVar()
-        ttk.Entry(file_frame, textvariable=self.output_var).grid(
+        ttk.Entry(s1, textvariable=self.output_var).grid(
             row=1, column=1, sticky=EW, padx=8, pady=PYW)
-        ttk.Button(file_frame, text="瀏覽…", command=self._browse_output,
+        ttk.Button(s1, text="瀏覽…", command=self._browse_output,
                    bootstyle=BTN_BROWSE, width=8).grid(row=1, column=2, pady=PYW)
-        file_frame.columnconfigure(1, weight=1)
 
-        # === Date Configuration ===
-        date_frame = ttk.LabelFrame(container, text=" 📅  日期設定")
-        date_frame.pack(fill=X, **PF)
+        ttk.Label(s1, text="工作表:", width=LBL_W, anchor=E).grid(
+            row=2, column=0, sticky=E, pady=(PYW, 14))
+        self.sheet_var = ttk.StringVar(value="總表")
+        self.sheet_combo = ttk.Combobox(s1, textvariable=self.sheet_var,
+                                        width=22, state="readonly")
+        self.sheet_combo.grid(row=2, column=1, sticky=W, padx=8, pady=(PYW, 14))
+        ttk.Button(s1, text="載入 Excel", command=self._load_excel,
+                   bootstyle=BTN_PRIMARY, width=12).grid(
+            row=2, column=2, pady=(PYW, 14))
 
-        ttk.Label(date_frame, text="專案起始日:").grid(row=0, column=0, sticky=W, **GX)
-        self.start_date_entry = ttk.DateEntry(date_frame, dateformat="%Y-%m-%d", width=14)
+        # ════════════════════════════════════════════════════════
+        # Section 2  日期與報告
+        # 合併：起始/報告日期 + D-day 結果 + 部門 + 前綴
+        # ════════════════════════════════════════════════════════
+        s2 = self._make_section(sf, "日期與報告")
+
+        ttk.Label(s2, text="起始日:", width=LBL_W, anchor=E).grid(
+            row=0, column=0, sticky=E, pady=PYW)
+        self.start_date_entry = ttk.DateEntry(s2, dateformat="%Y-%m-%d", width=14)
         self.start_date_entry.grid(row=0, column=1, sticky=W, padx=8, pady=PYW)
-        ttk.Label(date_frame, text="用於計算 D 天數", bootstyle="secondary").grid(
+        ttk.Label(s2, text="用於計算 D 天數",
+                  font=HINT_FONT, bootstyle="secondary").grid(
             row=0, column=2, sticky=W, padx=4)
 
-        ttk.Label(date_frame, text="報告日期:").grid(row=1, column=0, sticky=W, **GX)
-        self.report_date_entry = ttk.DateEntry(date_frame, dateformat="%Y-%m-%d", width=14)
+        ttk.Label(s2, text="報告日期:", width=LBL_W, anchor=E).grid(
+            row=1, column=0, sticky=E, pady=PYW)
+        self.report_date_entry = ttk.DateEntry(s2, dateformat="%Y-%m-%d", width=14)
         self.report_date_entry.grid(row=1, column=1, sticky=W, padx=8, pady=PYW)
-        ttk.Button(date_frame, text="今天", command=self._set_today,
-                   bootstyle=BTN_ACTION, width=6).grid(row=1, column=2, sticky=W, padx=4)
+        ttk.Button(s2, text="今天", command=self._set_today,
+                   bootstyle=BTN_ACTION, width=6).grid(
+            row=1, column=2, sticky=W, padx=4)
 
-        ttk.Label(date_frame, text="計算結果:").grid(row=2, column=0, sticky=W, **GX)
+        # D-day 結果 — 突出顯示
         self.computed_label = ttk.Label(
-            date_frame, text="", bootstyle="primary",
-            font=("", 11, "bold"),
+            s2, text="", bootstyle="primary",
+            font=("", 15, "bold"),
         )
-        self.computed_label.grid(row=2, column=1, columnspan=2, sticky=W, padx=8, pady=5)
+        self.computed_label.grid(
+            row=2, column=0, columnspan=3,
+            sticky=W, padx=(2, 0), pady=(8, 4))
 
-        self.start_date_entry.entry.bind("<<DateEntrySelected>>", lambda e: self._update_computed())
-        self.report_date_entry.entry.bind("<<DateEntrySelected>>", lambda e: self._update_computed())
-        self.start_date_entry.entry.bind("<FocusOut>", lambda e: self._update_computed())
-        self.report_date_entry.entry.bind("<FocusOut>", lambda e: self._update_computed())
+        self.start_date_entry.entry.bind("<<DateEntrySelected>>",
+                                         lambda e: self._update_computed())
+        self.report_date_entry.entry.bind("<<DateEntrySelected>>",
+                                          lambda e: self._update_computed())
+        self.start_date_entry.entry.bind("<FocusOut>",
+                                         lambda e: self._update_computed())
+        self.report_date_entry.entry.bind("<FocusOut>",
+                                          lambda e: self._update_computed())
 
-        # === Excel Configuration ===
-        excel_frame = ttk.LabelFrame(container, text=" 📊  Excel 設定")
-        excel_frame.pack(fill=X, **PF)
+        # 分隔線
+        ttk.Separator(s2, orient="horizontal").grid(
+            row=3, column=0, columnspan=3, sticky=EW, pady=(8, 10))
 
-        ttk.Label(excel_frame, text="工作表名稱:").grid(row=0, column=0, sticky=W, **GX)
-        self.sheet_var = ttk.StringVar(value="總表")
-        self.sheet_combo = ttk.Combobox(excel_frame, textvariable=self.sheet_var,
-                                        width=22, state="readonly")
-        self.sheet_combo.grid(row=0, column=1, sticky=W, padx=8, pady=PYW)
-        ttk.Button(excel_frame, text="載入 Excel", command=self._load_excel,
-                   bootstyle=BTN_PRIMARY, width=12).grid(row=0, column=2, padx=4)
-
-        # === Department Selection ===
-        dept_frame = ttk.LabelFrame(container, text=" 🚢  部門選擇")
-        dept_frame.pack(fill=X, **PF)
-
+        # 部門選擇
+        ttk.Label(s2, text="部門:", width=LBL_W, anchor=E).grid(
+            row=4, column=0, sticky=E, pady=PYW)
         self.dept_var = ttk.StringVar(value=self.settings.department or "engine")
-        radio_frame = ttk.Frame(dept_frame)
-        radio_frame.grid(row=0, column=0, columnspan=4, sticky=W, pady=(2, 6))
-        for idx, (label, val) in enumerate([
-            ("機艙  (Eeg Dept.)", "engine"),
-            ("甲板  (Deck Dept.)", "deck"),
+        radio_frame = ttk.Frame(s2)
+        radio_frame.grid(row=4, column=1, columnspan=2, sticky=W, padx=8)
+        for label, val in [
+            ("機艙 (Eeg Dept.)", "engine"),
+            ("甲板 (Deck Dept.)", "deck"),
             ("不選擇", "none"),
-        ]):
+        ]:
             ttk.Radiobutton(
                 radio_frame, text=label, value=val,
                 variable=self.dept_var, command=self._on_dept_changed,
             ).pack(side=LEFT, padx=(0, 16))
 
-        ttk.Label(dept_frame, text="檔名前綴:").grid(row=1, column=0, sticky=W, pady=(0, 6))
+        # 檔名前綴
+        ttk.Label(s2, text="檔名前綴:", width=LBL_W, anchor=E).grid(
+            row=5, column=0, sticky=E, pady=(PYW, 14))
         self.prefix_var = ttk.StringVar(value=self.settings.filename_prefix or "SY-")
-        ttk.Entry(dept_frame, textvariable=self.prefix_var, width=14).grid(
-            row=1, column=1, sticky=W, padx=8, pady=(0, 6))
-        ttk.Label(dept_frame, text="例: SY-、MV-、留空", bootstyle="secondary").grid(
-            row=1, column=2, sticky=W, padx=4, pady=(0, 6))
+        ttk.Entry(s2, textvariable=self.prefix_var, width=12).grid(
+            row=5, column=1, sticky=W, padx=8, pady=(PYW, 14))
+        ttk.Label(s2, text="例: SY-、MV-、留空",
+                  font=HINT_FONT, bootstyle="secondary").grid(
+            row=5, column=2, sticky=W, padx=4)
         self.prefix_var.trace_add("write", lambda *_: self._on_dept_changed())
 
-        # === Weather Settings ===
+        # ════════════════════════════════════════════════════════
+        # Section 3  天氣資訊  (視覺重量較輕)
+        # ════════════════════════════════════════════════════════
         self._build_weather_ui()
 
     def _build_weather_ui(self):
-        wf = ttk.LabelFrame(self._sf_container, text=" 🌤  天氣資訊")
-        wf.pack(fill=X, padx=PX, pady=PY_B)
+        # 使用較小的 pady，降低整體視覺重量
+        wrapper = ttk.Frame(self._sf_container)
+        wrapper.pack(fill=X, padx=PX, pady=PY_B)
+
+        hdr = ttk.Frame(wrapper)
+        hdr.pack(fill=X, pady=(0, 8))
+        ttk.Label(hdr, text="天氣資訊", font=SECTION_FONT,
+                  bootstyle="secondary").pack(side=LEFT)
+        ttk.Separator(hdr, orient="horizontal").pack(
+            side=LEFT, fill=X, expand=True, padx=(8, 0))
+
+        wf = ttk.Frame(wrapper)
+        wf.pack(fill=X, padx=4)
         wf.columnconfigure(1, weight=1)
 
-        # ── Enable toggle ──────────────────────────────────────────────
+        # Toggle
         self.weather_enabled_var = ttk.BooleanVar(value=self.settings.show_weather)
         ttk.Checkbutton(
             wf, text="在報告中顯示天氣資訊",
             variable=self.weather_enabled_var,
             bootstyle="success",
-        ).grid(row=0, column=0, columnspan=3, sticky=W, pady=(4, 6))
+        ).grid(row=0, column=0, columnspan=3, sticky=W, pady=(2, 8))
 
-        # ── 地點搜尋（單一框） ─────────────────────────────────────────
-        ttk.Label(wf, text="地點:").grid(row=1, column=0, sticky=W, padx=(4, 0), pady=5)
+        # 地點搜尋
+        ttk.Label(wf, text="地點:", width=LBL_W, anchor=E).grid(
+            row=1, column=0, sticky=E, pady=PYW)
         self.city_search_var = ttk.StringVar(
             value=getattr(self.settings, "weather_city", "") or "")
         self.city_entry = ttk.Entry(wf, textvariable=self.city_search_var)
-        self.city_entry.grid(row=1, column=1, sticky=EW, padx=8, pady=5)
+        self.city_entry.grid(row=1, column=1, sticky=EW, padx=8, pady=PYW)
         self.city_entry.bind("<Return>", lambda e: self._search_city())
         ttk.Button(wf, text="搜尋", command=self._search_city,
-                   bootstyle=BTN_ACTION, width=6).grid(row=1, column=2, padx=(0, 8), pady=PYW)
+                   bootstyle=BTN_ACTION, width=6).grid(
+            row=1, column=2, padx=(0, 0), pady=PYW)
 
-        # ── Combo for selecting from results ──────────────────────────
+        # 結果下拉（多筆時出現）
         self.city_result_var = ttk.StringVar()
         self.city_combo = ttk.Combobox(wf, textvariable=self.city_result_var,
                                        state="readonly")
         self.city_combo.grid(row=2, column=0, columnspan=3, sticky=EW,
                              padx=8, pady=(0, 4))
-        self.city_combo.grid_remove()   # hidden until results arrive
+        self.city_combo.grid_remove()
         self.city_combo.bind("<<ComboboxSelected>>", self._on_result_selected)
 
-        # ── Status labels ──────────────────────────────────────────────
-        self.selected_label = ttk.Label(wf, text="輸入地點名稱後點「搜尋」", bootstyle="secondary")
-        self.selected_label.grid(row=3, column=0, columnspan=3, sticky=W,
-                                 padx=8, pady=(2, 0))
+        # 狀態文字
+        self.selected_label = ttk.Label(
+            wf, text="輸入地點名稱後點「搜尋」",
+            font=HINT_FONT, bootstyle="secondary")
+        self.selected_label.grid(row=3, column=0, columnspan=3,
+                                 sticky=W, padx=8, pady=(2, 0))
 
-        self.weather_result_label = ttk.Label(wf, text="", bootstyle="success",
-                                              font=("", 10))
-        self.weather_result_label.grid(row=4, column=0, columnspan=3, sticky=W,
-                                       padx=8, pady=(0, 6))
+        self.weather_result_label = ttk.Label(
+            wf, text="", bootstyle="success", font=("", 10))
+        self.weather_result_label.grid(row=4, column=0, columnspan=3,
+                                       sticky=W, padx=8, pady=(2, 4))
 
     # ──────────────────────────────────────────────────────────────────────
     # Weather: search logic
