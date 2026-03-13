@@ -5,6 +5,19 @@ import openpyxl
 from openpyxl.cell.cell import MergedCell
 
 
+def _clean(value) -> str:
+    """Convert a cell value to a clean single-line string.
+    Returns '' if the value is blank/NaN."""
+    if value is None or (isinstance(value, float) and pd.isna(value)):
+        return ""
+    s = str(value).strip()
+    if s.lower() == "nan" or s == "":
+        return ""
+    # Collapse internal newlines / tabs into a single space
+    s = " ".join(s.splitlines())
+    return " ".join(s.split())   # also collapse multiple spaces
+
+
 class ExcelProcessor:
     def __init__(self, excel_path: str, sheet_name: str = "總表"):
         self.excel_path = excel_path
@@ -87,18 +100,21 @@ class ExcelProcessor:
         engine_room_tasks = []
 
         for _, row in self.df.iterrows():
-            category = str(row["Unnamed: 0"]).strip()
-            code = str(row["Unnamed: 1"]).strip()
-            name = str(row["Unnamed: 2"]).strip()
-            progress = row[date_column]
+            category = _clean(row.iloc[0])
+            code     = _clean(row.iloc[1])
+            name     = _clean(row.iloc[2])
+            progress = _clean(row[date_column])
 
-            if pd.notna(progress) and str(progress) != "nan":
-                if category == "船廠工程":
-                    line = f"{code} - {progress}"
-                    shipyard_tasks.append((name, line))
-                elif "自修" in category:
-                    line = f"{name} - {progress}"
-                    engine_room_tasks.append((name, line))
+            # Skip if progress cell is blank
+            if not progress:
+                continue
+
+            if category == "船廠工程":
+                line = f"{code} - {progress}" if code else progress
+                shipyard_tasks.append((name, line))
+            elif "自修" in category:
+                line = f"{name} - {progress}" if name else progress
+                engine_room_tasks.append((name, line))
 
         return shipyard_tasks, engine_room_tasks
 

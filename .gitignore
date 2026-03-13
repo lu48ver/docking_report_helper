@@ -30,6 +30,9 @@ desktop.ini
 報告/
 last_paths.json
 
+# Test data (not for version control)
+Test excel/
+
 # Claude Code
 .claude/
 

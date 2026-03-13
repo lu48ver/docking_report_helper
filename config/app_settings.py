@@ -13,8 +13,10 @@ class AppSettings:
     window_geometry: str = "1200x800"
     department: str = "engine"       # "engine" / "deck" / "none"
     filename_prefix: str = "SY-"    # 使用者自訂檔名前綴
-    show_weather: bool = True        # 是否顯示天氣
-    weather_city: str = "Kaohsiung"  # 天氣查詢城市
+    show_weather: bool = True         # 是否顯示天氣
+    weather_country: str = "TW"      # 國家 ISO 代碼
+    weather_city: str = "Kaohsiung"  # 城市搜尋關鍵字
+    weather_town: str = ""           # 鄉鎮搜尋關鍵字（選填）
 
     def to_dict(self) -> dict:
         return asdict(self)

@@ -1,4 +1,18 @@
 import os
+import re
+
+
+# Characters forbidden in Windows filenames/directory names
+_WIN_INVALID = re.compile(r'[\\/:*?"<>|\r\n\t]')
+_TRAILING     = re.compile(r'[\s.]+$')   # trailing spaces or dots
+
+
+def _sanitize(name: str, max_len: int = 80) -> str:
+    """Remove Windows-illegal characters and trim to a safe length."""
+    name = _WIN_INVALID.sub(' ', name)   # replace illegal chars with space
+    name = ' '.join(name.split())        # collapse whitespace / newlines
+    name = _TRAILING.sub('', name)       # strip trailing spaces/dots
+    return name[:max_len].strip()
 
 
 class FolderCreator:
@@ -19,7 +33,10 @@ class FolderCreator:
         # Shipyard task folders (no date prefix)
         for _, line in new_shipyard_tasks:
             if line and line != "nan":
-                folder_path = os.path.join(photo_day_folder, line.strip())
+                safe = _sanitize(line)
+                if not safe:
+                    continue
+                folder_path = os.path.join(photo_day_folder, safe)
                 if not os.path.exists(folder_path):
                     os.makedirs(folder_path)
                     created_folders.append(folder_path)
@@ -27,7 +44,10 @@ class FolderCreator:
         # Engine room task folders (with date prefix)
         for _, line in new_engine_room_tasks:
             if line and line != "nan":
-                folder_name = f"{day_date_str}_{line.strip()}"
+                safe = _sanitize(line)
+                if not safe:
+                    continue
+                folder_name = f"{day_date_str}_{safe}"
                 folder_path = os.path.join(photo_day_folder, folder_name)
                 if not os.path.exists(folder_path):
                     os.makedirs(folder_path)

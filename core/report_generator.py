@@ -7,6 +7,11 @@ from docx.shared import Cm, Pt
 from docx.enum.text import WD_ALIGN_PARAGRAPH
 
 
+def _one_line(text: str) -> str:
+    """Collapse any newlines / extra spaces in a string to a single line."""
+    return " ".join(text.split())
+
+
 class ReportGenerator:
     def __init__(self, template_path: str):
         self.template_path = template_path
@@ -102,7 +107,7 @@ class ReportGenerator:
                 new_paragraphs = []
                 for idx, (_, line) in enumerate(task_list, 1):
                     new_para = Paragraph(OxmlElement("w:p"), para._parent)
-                    new_para.add_run(f"{idx}. {line}")
+                    new_para.add_run(f"{idx}. {_one_line(line)}")
                     new_paragraphs.append(new_para)
 
                 for new_para in reversed(new_paragraphs):
@@ -163,7 +168,7 @@ class ReportGenerator:
             cell_a = table.cell(header_row_idx, 0)
             cell_b = table.cell(header_row_idx, 1)
             merged = cell_a.merge(cell_b)
-            merged.text = line.strip()
+            merged.text = _one_line(line)
             self._center_cell_text(merged)
 
             # Set photo row height to ~3cm for pasting photos
@@ -186,7 +191,7 @@ class ReportGenerator:
             content_row_idx = idx * 2
             photo_row_idx = idx * 2 + 1
 
-            table.cell(content_row_idx, 0).text = line.strip()
+            table.cell(content_row_idx, 0).text = _one_line(line)
 
             # Set photo row height to ~3cm
             self._set_row_height(table.rows[photo_row_idx], 3.0)
@@ -207,7 +212,7 @@ class ReportGenerator:
         for idx, (_, line) in enumerate(task_list):
             row = (idx // cols) * 2
             col = idx % cols
-            table.cell(row, col).text = line.strip()
+            table.cell(row, col).text = _one_line(line)
 
         anchor._element.addnext(table._element)
 
