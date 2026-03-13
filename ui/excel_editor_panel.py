@@ -17,13 +17,16 @@ class ExcelEditorPanel(ttk.Frame):
 
     def _build_ui(self):
         # Toolbar
-        toolbar = ttk.Frame(self, padding=5)
+        toolbar = ttk.Frame(self, padding=(10, 8))
         toolbar.pack(fill=X)
 
-        ttk.Button(toolbar, text="儲存變更", command=self._save_changes, bootstyle="success").pack(side=LEFT, padx=2)
-        ttk.Button(toolbar, text="重新載入", command=self._reload, bootstyle="warning-outline").pack(side=LEFT, padx=2)
+        ttk.Button(toolbar, text="儲存變更", command=self._save_changes,
+                   bootstyle="success", width=12).pack(side=LEFT, padx=(0, 6))
+        ttk.Button(toolbar, text="重新載入", command=self._reload,
+                   bootstyle="warning-outline", width=10).pack(side=LEFT)
 
-        self.modified_label = ttk.Label(toolbar, text="", bootstyle="danger")
+        self.modified_label = ttk.Label(toolbar, text="", bootstyle="danger",
+                                        font=("", 9, "bold"))
         self.modified_label.pack(side=RIGHT, padx=10)
 
         self.info_label = ttk.Label(toolbar, text="尚未載入 Excel", bootstyle="secondary")

@@ -23,9 +23,9 @@ class MainWindow(ttk.Window):
         self.settings = self.config_manager.load()
         self.template_manager = TemplateManager("templates")
 
-        super().__init__(title="塢修報告產生器", themename="cosmo")
+        super().__init__(title="塢修報告產生器", themename="litera")
         self.geometry(self.settings.window_geometry)
-        self.minsize(900, 600)
+        self.minsize(980, 700)
 
         self._build_ui()
         self._wire_events()
@@ -34,26 +34,28 @@ class MainWindow(ttk.Window):
     def _build_ui(self):
         # Notebook with three tabs
         self.notebook = ttk.Notebook(self)
-        self.notebook.pack(fill=BOTH, expand=True, padx=5, pady=5)
+        self.notebook.pack(fill=BOTH, expand=True, padx=8, pady=(8, 0))
 
         # Tab 1: Settings
         self.config_panel = ConfigPanel(self.notebook, self.settings)
-        self.notebook.add(self.config_panel, text="  設定  ")
+        self.notebook.add(self.config_panel, text="  ⚙  設定  ")
 
         # Tab 2: Excel Editor
         self.editor_panel = ExcelEditorPanel(self.notebook)
-        self.notebook.add(self.editor_panel, text="  Excel 編輯器  ")
+        self.notebook.add(self.editor_panel, text="  📊  Excel 編輯器  ")
 
         # Tab 3: Generate Report
         self.output_panel = ReportOutputPanel(self.notebook, self.template_manager, settings=self.settings)
-        self.notebook.add(self.output_panel, text="  產生報告  ")
+        self.notebook.add(self.output_panel, text="  📄  產生報告  ")
 
         # Status bar
-        status_frame = ttk.Frame(self, padding=(10, 3))
+        ttk.Separator(self, orient="horizontal").pack(fill=X, side=BOTTOM)
+        status_frame = ttk.Frame(self, padding=(14, 5))
         status_frame.pack(fill=X, side=BOTTOM)
         self.status_label = ttk.Label(status_frame, text="就緒", bootstyle="secondary")
         self.status_label.pack(side=LEFT)
-        ttk.Label(status_frame, text="v2.0", bootstyle="secondary").pack(side=RIGHT)
+        ttk.Label(status_frame, text="塢修報告產生器  v2.0",
+                  bootstyle="secondary").pack(side=RIGHT)
 
     def _wire_events(self):
         # Config panel -> load excel into editor

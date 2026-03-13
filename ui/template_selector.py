@@ -6,7 +6,7 @@ from tkinter import filedialog
 
 class TemplateSelector(ttk.LabelFrame):
     def __init__(self, parent, template_manager, **kwargs):
-        super().__init__(parent, text="模板選擇", **kwargs)
+        super().__init__(parent, text=" 📄  模板選擇", **kwargs)
         self.template_manager = template_manager
         self.selected_path = ttk.StringVar()
 
@@ -16,21 +16,25 @@ class TemplateSelector(ttk.LabelFrame):
     def _build_ui(self):
         # Template list
         columns = ("name", "modified")
-        self.tree = ttk.Treeview(self, columns=columns, show="headings", height=5, selectmode="browse")
+        self.tree = ttk.Treeview(self, columns=columns, show="headings",
+                                 height=4, selectmode="browse")
         self.tree.heading("name", text="模板名稱")
         self.tree.heading("modified", text="修改日期")
-        self.tree.column("name", width=300)
-        self.tree.column("modified", width=150)
-        self.tree.pack(fill=BOTH, expand=True, pady=(0, 5))
+        self.tree.column("name", width=320, stretch=True)
+        self.tree.column("modified", width=160, stretch=False)
+        self.tree.pack(fill=BOTH, expand=True, pady=(0, 8))
 
         self.tree.bind("<<TreeviewSelect>>", self._on_select)
 
         # Buttons
         btn_frame = ttk.Frame(self)
         btn_frame.pack(fill=X)
-        ttk.Button(btn_frame, text="新增模板...", command=self._add_template, bootstyle="outline").pack(side=LEFT, padx=2)
-        ttk.Button(btn_frame, text="開啟模板資料夾", command=self._open_folder, bootstyle="outline").pack(side=LEFT, padx=2)
-        ttk.Button(btn_frame, text="重新整理", command=self.refresh_templates, bootstyle="outline").pack(side=LEFT, padx=2)
+        ttk.Button(btn_frame, text="新增模板…", command=self._add_template,
+                   bootstyle="primary-outline", width=12).pack(side=LEFT, padx=(0, 6))
+        ttk.Button(btn_frame, text="開啟資料夾", command=self._open_folder,
+                   bootstyle="secondary-outline", width=12).pack(side=LEFT, padx=(0, 6))
+        ttk.Button(btn_frame, text="重新整理", command=self.refresh_templates,
+                   bootstyle="secondary-outline", width=10).pack(side=LEFT)
 
     def refresh_templates(self):
         self.tree.delete(*self.tree.get_children())
