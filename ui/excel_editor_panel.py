@@ -3,6 +3,8 @@ from ttkbootstrap.constants import *
 from datetime import datetime
 import tksheet
 
+from ui.constants import BTN_SAVE, BTN_UTILITY
+
 
 class ExcelEditorPanel(ttk.Frame):
     def __init__(self, parent, **kwargs):
@@ -17,20 +19,23 @@ class ExcelEditorPanel(ttk.Frame):
 
     def _build_ui(self):
         # Toolbar
-        toolbar = ttk.Frame(self, padding=(10, 8))
+        toolbar = ttk.Frame(self, padding=(14, 8))
         toolbar.pack(fill=X)
 
         ttk.Button(toolbar, text="儲存變更", command=self._save_changes,
-                   bootstyle="success", width=12).pack(side=LEFT, padx=(0, 6))
+                   bootstyle=BTN_SAVE, width=12).pack(side=LEFT, padx=(0, 6))
         ttk.Button(toolbar, text="重新載入", command=self._reload,
-                   bootstyle="warning-outline", width=10).pack(side=LEFT)
+                   bootstyle=BTN_UTILITY, width=10).pack(side=LEFT)
 
-        self.modified_label = ttk.Label(toolbar, text="", bootstyle="danger",
+        self.modified_label = ttk.Label(toolbar, text="", bootstyle="warning",
                                         font=("", 9, "bold"))
         self.modified_label.pack(side=RIGHT, padx=10)
 
         self.info_label = ttk.Label(toolbar, text="尚未載入 Excel", bootstyle="secondary")
         self.info_label.pack(side=RIGHT, padx=10)
+
+        # 分隔線（toolbar 與 sheet 之間）
+        ttk.Separator(self, orient="horizontal").pack(fill=X)
 
         # Spreadsheet
         self.sheet = tksheet.Sheet(
@@ -61,6 +66,8 @@ class ExcelEditorPanel(ttk.Frame):
 
     def load_excel(self, path: str, sheet_name: str):
         from core.excel_processor import ExcelProcessor
+        self.info_label.config(text="載入中…")
+        self.update_idletasks()
         try:
             self._processor = ExcelProcessor(path, sheet_name)
             self._processor.load()

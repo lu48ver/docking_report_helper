@@ -3,6 +3,8 @@ import ttkbootstrap as ttk
 from ttkbootstrap.constants import *
 from tkinter import filedialog
 
+from ui.constants import BTN_ADD, BTN_BROWSE, BTN_UTILITY
+
 
 class TemplateSelector(ttk.LabelFrame):
     def __init__(self, parent, template_manager, **kwargs):
@@ -28,17 +30,21 @@ class TemplateSelector(ttk.LabelFrame):
 
         # Buttons
         btn_frame = ttk.Frame(self)
-        btn_frame.pack(fill=X)
+        btn_frame.pack(fill=X, pady=(4, 2))
         ttk.Button(btn_frame, text="新增模板…", command=self._add_template,
-                   bootstyle="primary-outline", width=12).pack(side=LEFT, padx=(0, 6))
+                   bootstyle=BTN_ADD, width=12).pack(side=LEFT, padx=(0, 6))
         ttk.Button(btn_frame, text="開啟資料夾", command=self._open_folder,
-                   bootstyle="secondary-outline", width=12).pack(side=LEFT, padx=(0, 6))
+                   bootstyle=BTN_BROWSE, width=12).pack(side=LEFT, padx=(0, 6))
         ttk.Button(btn_frame, text="重新整理", command=self.refresh_templates,
-                   bootstyle="secondary-outline", width=10).pack(side=LEFT)
+                   bootstyle=BTN_UTILITY, width=10).pack(side=LEFT)
 
     def refresh_templates(self):
         self.tree.delete(*self.tree.get_children())
         templates = self.template_manager.discover_templates()
+        if not templates:
+            # Empty state
+            self.tree.insert("", "end", values=("（尚未有模板，請點「新增模板」）", "—"))
+            return
         for t in templates:
             self.tree.insert("", "end", values=(t.name, t.modified_date), tags=(t.path,))
 

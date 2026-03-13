@@ -38,15 +38,15 @@ class MainWindow(ttk.Window):
 
         # Tab 1: Settings
         self.config_panel = ConfigPanel(self.notebook, self.settings)
-        self.notebook.add(self.config_panel, text="  ⚙  設定  ")
+        self.notebook.add(self.config_panel, text=" ⚙ 設定 ")
 
         # Tab 2: Excel Editor
         self.editor_panel = ExcelEditorPanel(self.notebook)
-        self.notebook.add(self.editor_panel, text="  📊  Excel 編輯器  ")
+        self.notebook.add(self.editor_panel, text=" 📊 Excel 編輯器 ")
 
         # Tab 3: Generate Report
         self.output_panel = ReportOutputPanel(self.notebook, self.template_manager, settings=self.settings)
-        self.notebook.add(self.output_panel, text="  📄  產生報告  ")
+        self.notebook.add(self.output_panel, text=" 📄 產生報告 ")
 
         # Status bar
         ttk.Separator(self, orient="horizontal").pack(fill=X, side=BOTTOM)

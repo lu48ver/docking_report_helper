@@ -5,6 +5,8 @@ from datetime import datetime
 import threading
 import queue
 
+from ui.constants import BTN_GENERATE
+
 
 class ReportOutputPanel(ttk.Frame):
     def __init__(self, parent, template_manager, settings=None, **kwargs):
@@ -22,13 +24,13 @@ class ReportOutputPanel(ttk.Frame):
 
         self._build_ui()
 
-    # Light-theme canvas palette
+    # Light-theme canvas palette（柔和，搭配 litera 主題）
     _C_BG      = "#f8f9fa"
     _C_BORDER  = "#ced4da"
-    _C_HEADER  = "#2c6fad"
+    _C_HEADER  = "#4582ec"   # litera primary（比原本 #2c6fad 更柔和）
     _C_HDR_TXT = "#ffffff"
-    _C_PHOTO   = "#e9ecef"
-    _C_PHO_TXT = "#868e96"
+    _C_PHOTO   = "#e8f0fe"   # 淡藍色取代灰色，更清爽
+    _C_PHO_TXT = "#6c757d"
 
     def _build_ui(self):
         # Template selector
@@ -75,7 +77,7 @@ class ReportOutputPanel(ttk.Frame):
 
         ttk.Label(output_frame, text="輸出檔名:", width=10, anchor=E).grid(
             row=0, column=0, sticky=E, pady=5)
-        self.filename_label = ttk.Label(output_frame, text="(尚未計算)",
+        self.filename_label = ttk.Label(output_frame, text="— 請先設定日期與部門 —",
                                         bootstyle="primary", font=("", 10))
         self.filename_label.grid(row=0, column=1, sticky=W, padx=10, pady=5)
 
@@ -92,8 +94,8 @@ class ReportOutputPanel(ttk.Frame):
             btn_frame,
             text="  ▶  產生報告  ",
             command=self._on_generate_click,
-            bootstyle="success",
-            width=28,
+            bootstyle=BTN_GENERATE,
+            width=30,
         )
         self.generate_btn.pack(anchor=CENTER)
 
@@ -253,6 +255,6 @@ class ReportOutputPanel(ttk.Frame):
 
     def set_generating(self, is_generating: bool):
         if is_generating:
-            self.generate_btn.config(state="disabled", text="產生中...")
+            self.generate_btn.config(state="disabled", text="⏳  產生中…")
         else:
-            self.generate_btn.config(state="normal", text="產生報告")
+            self.generate_btn.config(state="normal", text="  ▶  產生報告  ")
