@@ -27,9 +27,34 @@ class MainWindow(ttk.Window):
         self.geometry(self.settings.window_geometry)
         self.minsize(980, 700)
 
+        # Register custom ttk styles BEFORE building any widgets
+        self._configure_styles()
         self._build_ui()
         self._wire_events()
         self.protocol("WM_DELETE_WINDOW", self._on_close)
+
+    # ── Custom style registration ─────────────────────────────────────────
+
+    def _configure_styles(self):
+        """Register custom ttk styles used by v3 UI components."""
+        style = ttk.Style()
+
+        # D-day highlight card + output summary card
+        style.configure("DayCard.TFrame",
+                        background="#eaf0fb")
+        style.configure("DayCard.TLabel",
+                        background="#eaf0fb",
+                        foreground="#2c5fad")
+
+        # Excel editor toolbar — extremely light grey to distinguish from sheet
+        style.configure("Toolbar.TFrame",
+                        background="#f4f6f9")
+        style.configure("Toolbar.TLabel",
+                        background="#f4f6f9")
+        style.configure("Toolbar.TButton",
+                        background="#f4f6f9")
+
+    # ── UI construction ───────────────────────────────────────────────────
 
     def _build_ui(self):
         # Notebook with three tabs
@@ -38,23 +63,25 @@ class MainWindow(ttk.Window):
 
         # Tab 1: Settings
         self.config_panel = ConfigPanel(self.notebook, self.settings)
-        self.notebook.add(self.config_panel, text=" ⚙ 設定 ")
+        self.notebook.add(self.config_panel, text=" ⚙  設定 ")
 
         # Tab 2: Excel Editor
         self.editor_panel = ExcelEditorPanel(self.notebook)
-        self.notebook.add(self.editor_panel, text=" 📊 Excel 編輯器 ")
+        self.notebook.add(self.editor_panel, text=" 📊  Excel 編輯器 ")
 
         # Tab 3: Generate Report
-        self.output_panel = ReportOutputPanel(self.notebook, self.template_manager, settings=self.settings)
-        self.notebook.add(self.output_panel, text=" 📄 產生報告 ")
+        self.output_panel = ReportOutputPanel(
+            self.notebook, self.template_manager, settings=self.settings)
+        self.notebook.add(self.output_panel, text=" 📄  產生報告 ")
 
         # Status bar
         ttk.Separator(self, orient="horizontal").pack(fill=X, side=BOTTOM)
-        status_frame = ttk.Frame(self, padding=(14, 5))
+        status_frame = ttk.Frame(self, padding=(16, 5))
         status_frame.pack(fill=X, side=BOTTOM)
-        self.status_label = ttk.Label(status_frame, text="就緒", bootstyle="secondary")
+        self.status_label = ttk.Label(
+            status_frame, text="就緒", bootstyle="secondary")
         self.status_label.pack(side=LEFT)
-        ttk.Label(status_frame, text="塢修報告產生器  v2.0",
+        ttk.Label(status_frame, text="塢修報告產生器  v3.0",
                   bootstyle="secondary").pack(side=RIGHT)
 
     def _wire_events(self):
@@ -77,7 +104,6 @@ class MainWindow(ttk.Window):
             ))
 
     def _on_tab_changed(self, event):
-        # When switching to the "產生報告" tab (index 2), refresh preview
         try:
             if self.notebook.index(self.notebook.select()) == 2:
                 self._update_preview()
@@ -91,7 +117,6 @@ class MainWindow(ttk.Window):
         self.status_label.config(text="就緒")
 
     def _get_dept_info(self):
-        """Return (dept_title, dept_eng) for the current department selection."""
         dept = self.config_panel.get_department()
         return ReportGenerator.DEPT_MAP.get(dept, ReportGenerator.DEPT_MAP["engine"])
 
@@ -106,7 +131,6 @@ class MainWindow(ttk.Window):
             prefix = self.config_panel.get_filename_prefix()
             self.output_panel.update_filename(day_date_str, day_str, dept_title, prefix)
 
-            # Try to get task counts
             excel_path = self.config_panel.get_excel_path()
             sheet_name = self.config_panel.get_sheet_name()
             if excel_path and os.path.exists(excel_path):
@@ -115,7 +139,6 @@ class MainWindow(ttk.Window):
                 try:
                     shipyard, engine = processor.extract_tasks(report_date)
                     self.output_panel.update_preview(len(shipyard), len(engine))
-                    # Feed real task names into canvas preview
                     all_tasks = shipyard + engine
                     if all_tasks:
                         self.output_panel.set_sample_tasks(all_tasks)
@@ -125,7 +148,6 @@ class MainWindow(ttk.Window):
             pass
 
     def _handle_generate(self):
-        # Validate inputs
         excel_path = self.config_panel.get_excel_path()
         output_dir = self.config_panel.get_output_dir()
         template_path = self.output_panel.get_selected_template_path()
@@ -140,11 +162,9 @@ class MainWindow(ttk.Window):
             Messagebox.show_error("請先選擇模板", title="錯誤")
             return
 
-        # Check unsaved excel changes
         if not self.editor_panel.check_unsaved():
             return
 
-        # Start generation in a thread
         self.output_panel.set_generating(True)
         self.output_panel.clear_log()
 
@@ -168,14 +188,15 @@ class MainWindow(ttk.Window):
             day_number = (report_date - start_date).days
             day_str = f"D{day_number}"
             day_date_str = report_date.strftime("%Y%m%d")
-            output_path = os.path.join(output_dir, f"{prefix}{dept_title}-{day_date_str}-{day_str}.docx")
+            output_path = os.path.join(
+                output_dir,
+                f"{prefix}{dept_title}-{day_date_str}-{day_str}.docx")
 
             # Fetch weather if enabled
             weather_text = ""
             if self.config_panel.weather_enabled_var.get():
                 weather_text = self.config_panel.get_weather_text()
                 if not weather_text:
-                    # Try fetching on-demand
                     self._log("正在抓取天氣資料...")
                     city = self.config_panel.get_weather_city()
                     if city:
@@ -183,8 +204,8 @@ class MainWindow(ttk.Window):
                             cities = WeatherService.search_city(city)
                             if cities:
                                 w = WeatherService.fetch_weather(
-                                    cities[0].latitude, cities[0].longitude, report_date
-                                )
+                                    cities[0].latitude, cities[0].longitude,
+                                    report_date)
                                 if w:
                                     weather_text = w.format_line()
                         except Exception as we:
@@ -195,7 +216,8 @@ class MainWindow(ttk.Window):
             processor = ExcelProcessor(excel_path, sheet_name)
             processor.load()
             shipyard_tasks, engine_room_tasks = processor.extract_tasks(report_date)
-            self._log(f"找到船廠工程 {len(shipyard_tasks)} 筆，自修 {len(engine_room_tasks)} 筆")
+            self._log(
+                f"找到船廠工程 {len(shipyard_tasks)} 筆，自修 {len(engine_room_tasks)} 筆")
 
             # Generate report
             self._log(f"使用模板: {os.path.basename(template_path)}")
@@ -218,9 +240,10 @@ class MainWindow(ttk.Window):
 
             # Create photo folders
             self._log("建立照片資料夾...")
-            # Use the filtered new tasks from the generator
-            new_shipyard = generator._filter_new_tasks(shipyard_tasks) if generator.doc else shipyard_tasks
-            new_engine = generator._filter_new_tasks(engine_room_tasks) if generator.doc else engine_room_tasks
+            new_shipyard = (generator._filter_new_tasks(shipyard_tasks)
+                            if generator.doc else shipyard_tasks)
+            new_engine = (generator._filter_new_tasks(engine_room_tasks)
+                          if generator.doc else engine_room_tasks)
 
             created = FolderCreator.create_photo_folders(
                 photo_root=output_dir,
@@ -237,7 +260,8 @@ class MainWindow(ttk.Window):
             self.config_manager.save(self.settings)
 
             self._log("完成！")
-            self.after(0, lambda: self.output_panel.update_preview(len(shipyard_tasks), len(engine_room_tasks)))
+            self.after(0, lambda: self.output_panel.update_preview(
+                len(shipyard_tasks), len(engine_room_tasks)))
             self.after(0, lambda: self.output_panel.set_generating(False))
             self.after(0, lambda: Messagebox.show_info(
                 f"報告已儲存至:\n{output_path}\n\n照片資料夾也已建立。",
@@ -247,7 +271,8 @@ class MainWindow(ttk.Window):
         except Exception as e:
             self._log(f"錯誤: {e}")
             self.after(0, lambda: self.output_panel.set_generating(False))
-            self.after(0, lambda: Messagebox.show_error(f"產生報告失敗:\n{e}", title="錯誤"))
+            self.after(0, lambda: Messagebox.show_error(
+                f"產生報告失敗:\n{e}", title="錯誤"))
 
     def _log(self, message: str):
         self.after(0, lambda: self.output_panel.log(message))

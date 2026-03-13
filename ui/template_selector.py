@@ -3,12 +3,14 @@ import ttkbootstrap as ttk
 from ttkbootstrap.constants import *
 from tkinter import filedialog
 
-from ui.constants import BTN_ADD, BTN_BROWSE, BTN_UTILITY
+from ui.constants import BTN_ADD, BTN_BROWSE, BTN_UTILITY, SECTION_FONT
 
 
-class TemplateSelector(ttk.LabelFrame):
+class TemplateSelector(ttk.Frame):
+    """模板選擇器 — 平面 section 樣式（v3：移除 LabelFrame 框線）"""
+
     def __init__(self, parent, template_manager, **kwargs):
-        super().__init__(parent, text=" 📄  模板選擇", **kwargs)
+        super().__init__(parent, **kwargs)
         self.template_manager = template_manager
         self.selected_path = ttk.StringVar()
 
@@ -16,21 +18,28 @@ class TemplateSelector(ttk.LabelFrame):
         self.refresh_templates()
 
     def _build_ui(self):
-        # Template list
+        # ── Section header（與其他 section 視覺一致）────────────
+        hdr = ttk.Frame(self)
+        hdr.pack(fill=X, pady=(0, 8))
+        ttk.Label(hdr, text="模板選擇",
+                  font=SECTION_FONT, bootstyle="secondary").pack(side=LEFT)
+        ttk.Separator(hdr, orient="horizontal").pack(
+            side=LEFT, fill=X, expand=True, padx=(8, 0))
+
+        # ── Template list ────────────────────────────────────────
         columns = ("name", "modified")
         self.tree = ttk.Treeview(self, columns=columns, show="headings",
                                  height=4, selectmode="browse")
         self.tree.heading("name", text="模板名稱")
         self.tree.heading("modified", text="修改日期")
-        self.tree.column("name", width=320, stretch=True)
+        self.tree.column("name", width=340, stretch=True)
         self.tree.column("modified", width=160, stretch=False)
         self.tree.pack(fill=BOTH, expand=True, pady=(0, 8))
-
         self.tree.bind("<<TreeviewSelect>>", self._on_select)
 
-        # Buttons
+        # ── Action buttons ───────────────────────────────────────
         btn_frame = ttk.Frame(self)
-        btn_frame.pack(fill=X, pady=(4, 2))
+        btn_frame.pack(fill=X, pady=(0, 4))
         ttk.Button(btn_frame, text="新增模板…", command=self._add_template,
                    bootstyle=BTN_ADD, width=12).pack(side=LEFT, padx=(0, 6))
         ttk.Button(btn_frame, text="開啟資料夾", command=self._open_folder,
@@ -42,13 +51,13 @@ class TemplateSelector(ttk.LabelFrame):
         self.tree.delete(*self.tree.get_children())
         templates = self.template_manager.discover_templates()
         if not templates:
-            # Empty state
-            self.tree.insert("", "end", values=("（尚未有模板，請點「新增模板」）", "—"))
+            self.tree.insert("", "end",
+                             values=("（尚未有模板，請點「新增模板」）", "—"))
             return
         for t in templates:
-            self.tree.insert("", "end", values=(t.name, t.modified_date), tags=(t.path,))
-
-        # Auto-select first if available
+            self.tree.insert("", "end",
+                             values=(t.name, t.modified_date), tags=(t.path,))
+        # Auto-select first
         children = self.tree.get_children()
         if children:
             self.tree.selection_set(children[0])
