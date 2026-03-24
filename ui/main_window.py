@@ -1,107 +1,123 @@
 import os
 import threading
-from datetime import datetime
+
 import ttkbootstrap as ttk
 from ttkbootstrap.constants import *
 from ttkbootstrap.dialogs import Messagebox
 
+from app_meta import APP_NAME, APP_VERSION
 from config.config_manager import ConfigManager
-from config.app_settings import AppSettings
 from core.template_manager import TemplateManager
 from core.excel_processor import ExcelProcessor
 from core.report_generator import ReportGenerator
 from core.folder_creator import FolderCreator
 from core.weather_service import WeatherService
+from core.path_utils import get_app_path
 from ui.config_panel import ConfigPanel
 from ui.excel_editor_panel import ExcelEditorPanel
 from ui.report_output_panel import ReportOutputPanel
+from ui.constants import (
+    APP_BG,
+    SURFACE_BG,
+    SURFACE_MUTED_BG,
+    SURFACE_SUBTLE_BG,
+    TEXT_COLOR,
+    TEXT_MUTED,
+    ACCENT_BG,
+    ACCENT_FG,
+    SUCCESS_BG,
+    SUCCESS_FG,
+    UI_FONT,
+)
 
 
 class MainWindow(ttk.Window):
     def __init__(self):
         self.config_manager = ConfigManager()
         self.settings = self.config_manager.load()
-        self.template_manager = TemplateManager("templates")
+        self.template_manager = TemplateManager(get_app_path("templates"))
 
-        super().__init__(title="塢修報告產生器", themename="litera")
+        super().__init__(title=APP_NAME, themename="litera")
         self.geometry(self.settings.window_geometry)
         self.minsize(980, 700)
 
-        # Register custom ttk styles BEFORE building any widgets
         self._configure_styles()
         self._build_ui()
         self._wire_events()
         self.protocol("WM_DELETE_WINDOW", self._on_close)
 
-    # ── Custom style registration ─────────────────────────────────────────
-
     def _configure_styles(self):
-        """Register custom ttk styles used by v3 UI components."""
         style = ttk.Style()
+        self.configure(bg=APP_BG)
 
-        # D-day highlight card + output summary card
-        style.configure("DayCard.TFrame",
-                        background="#eaf0fb")
-        style.configure("DayCard.TLabel",
-                        background="#eaf0fb",
-                        foreground="#2c5fad")
+        style.configure(".", font=(UI_FONT, 10))
+        style.configure("TFrame", background=APP_BG)
+        style.configure("Page.TFrame", background=APP_BG)
+        style.configure("Surface.TFrame", background=SURFACE_BG)
+        style.configure("MutedSurface.TFrame", background=SURFACE_MUTED_BG)
+        style.configure("StatusBar.TFrame", background=SURFACE_SUBTLE_BG)
+        style.configure("AccentCard.TFrame", background=ACCENT_BG)
+        style.configure("SummaryCard.TFrame", background=SUCCESS_BG)
+        style.configure("OptionCard.TFrame", background=SURFACE_MUTED_BG)
+        style.configure("SelectedOptionCard.TFrame", background=ACCENT_BG)
 
-        # Excel editor toolbar — extremely light grey to distinguish from sheet
-        style.configure("Toolbar.TFrame",
-                        background="#f4f6f9")
-        style.configure("Toolbar.TLabel",
-                        background="#f4f6f9")
-        style.configure("Toolbar.TButton",
-                        background="#f4f6f9")
+        style.configure("TLabel", background=APP_BG, foreground=TEXT_COLOR)
+        style.configure("SectionTitle.TLabel", background=SURFACE_BG, foreground=TEXT_COLOR, font=(UI_FONT, 11, "bold"))
+        style.configure("SectionDesc.TLabel", background=SURFACE_BG, foreground=TEXT_MUTED, font=(UI_FONT, 9))
+        style.configure("FieldLabel.TLabel", background=SURFACE_BG, foreground=TEXT_MUTED, font=(UI_FONT, 9, "bold"))
+        style.configure("Hint.TLabel", background=SURFACE_BG, foreground=TEXT_MUTED, font=(UI_FONT, 9))
+        style.configure("SuccessHint.TLabel", background=SURFACE_BG, foreground=SUCCESS_FG, font=(UI_FONT, 9))
+        style.configure("WarningHint.TLabel", background=SURFACE_BG, foreground="#9a6c11", font=(UI_FONT, 9))
+        style.configure("DangerHint.TLabel", background=SURFACE_BG, foreground="#a13a3a", font=(UI_FONT, 9))
+        style.configure("WeatherResult.TLabel", background=SURFACE_MUTED_BG, foreground=SUCCESS_FG, font=(UI_FONT, 10, "bold"))
+        style.configure("CardEyebrow.TLabel", background=ACCENT_BG, foreground=ACCENT_FG, font=(UI_FONT, 9, "bold"))
+        style.configure("CardValue.TLabel", background=ACCENT_BG, foreground=TEXT_COLOR, font=(UI_FONT, 18, "bold"))
+        style.configure("CardNote.TLabel", background=ACCENT_BG, foreground=TEXT_MUTED, font=(UI_FONT, 9))
+        style.configure("SummaryEyebrow.TLabel", background=SUCCESS_BG, foreground=SUCCESS_FG, font=(UI_FONT, 9, "bold"))
+        style.configure("SummaryValue.TLabel", background=SUCCESS_BG, foreground=TEXT_COLOR, font=(UI_FONT, 18, "bold"))
+        style.configure("SummaryNote.TLabel", background=SUCCESS_BG, foreground=TEXT_MUTED, font=(UI_FONT, 9))
+        style.configure("ToolbarCaption.TLabel", background=SURFACE_BG, foreground=TEXT_MUTED, font=(UI_FONT, 9, "bold"))
+        style.configure("ToolbarMeta.TLabel", background=SURFACE_BG, foreground=TEXT_COLOR, font=(UI_FONT, 10))
+        style.configure("StatusCaption.TLabel", background=SURFACE_SUBTLE_BG, foreground=TEXT_MUTED, font=(UI_FONT, 9, "bold"))
+        style.configure("StatusValue.TLabel", background=SURFACE_SUBTLE_BG, foreground=TEXT_COLOR, font=(UI_FONT, 9))
 
-    # ── UI construction ───────────────────────────────────────────────────
+        style.configure("TNotebook", background=APP_BG, borderwidth=0, tabmargins=(12, 12, 12, 0))
+        style.configure("TNotebook.Tab", padding=(18, 10), font=(UI_FONT, 10, "bold"))
+        style.map(
+            "TNotebook.Tab",
+            background=[("selected", SURFACE_BG), ("!selected", "#dde4ec")],
+            foreground=[("selected", TEXT_COLOR), ("!selected", TEXT_MUTED)],
+        )
+        style.configure("Treeview.Heading", font=(UI_FONT, 9, "bold"))
 
     def _build_ui(self):
-        # Notebook with three tabs
         self.notebook = ttk.Notebook(self)
-        self.notebook.pack(fill=BOTH, expand=True, padx=8, pady=(8, 0))
+        self.notebook.pack(fill=BOTH, expand=True, padx=10, pady=(10, 0))
 
-        # Tab 1: Settings
         self.config_panel = ConfigPanel(self.notebook, self.settings)
-        self.notebook.add(self.config_panel, text=" ⚙  設定 ")
+        self.notebook.add(self.config_panel, text="設定")
 
-        # Tab 2: Excel Editor
         self.editor_panel = ExcelEditorPanel(self.notebook)
-        self.notebook.add(self.editor_panel, text=" 📊  Excel 編輯器 ")
+        self.notebook.add(self.editor_panel, text="Excel 編輯器")
 
-        # Tab 3: Generate Report
-        self.output_panel = ReportOutputPanel(
-            self.notebook, self.template_manager, settings=self.settings)
-        self.notebook.add(self.output_panel, text=" 📄  產生報告 ")
+        self.output_panel = ReportOutputPanel(self.notebook, self.template_manager, settings=self.settings)
+        self.notebook.add(self.output_panel, text="產生報告")
 
-        # Status bar
         ttk.Separator(self, orient="horizontal").pack(fill=X, side=BOTTOM)
         status_frame = ttk.Frame(self, padding=(16, 5))
         status_frame.pack(fill=X, side=BOTTOM)
-        self.status_label = ttk.Label(
-            status_frame, text="就緒", bootstyle="secondary")
+        self.status_label = ttk.Label(status_frame, text="就緒", bootstyle="secondary")
         self.status_label.pack(side=LEFT)
-        ttk.Label(status_frame, text="塢修報告產生器  v3.0",
-                  bootstyle="secondary").pack(side=RIGHT)
+        ttk.Label(status_frame, text=f"{APP_NAME} v{APP_VERSION}", bootstyle="secondary").pack(side=RIGHT)
 
     def _wire_events(self):
-        # Config panel -> load excel into editor
         self.config_panel.on_excel_loaded = self._handle_excel_loaded
-
-        # Config panel -> date changed -> refresh preview
         self.config_panel.on_date_changed = self._update_preview
-
-        # Generate button
         self.output_panel.on_generate = self._handle_generate
-
-        # Refresh preview when switching to "產生報告" tab
         self.notebook.bind("<<NotebookTabChanged>>", self._on_tab_changed)
 
-        # Auto-load if settings have a valid excel path
         if self.settings.excel_path and os.path.exists(self.settings.excel_path):
-            self.after(500, lambda: self._handle_excel_loaded(
-                self.settings.excel_path, self.settings.sheet_name
-            ))
+            self.after(500, lambda: self._handle_excel_loaded(self.settings.excel_path, self.settings.sheet_name))
 
     def _on_tab_changed(self, event):
         try:
@@ -167,9 +183,7 @@ class MainWindow(ttk.Window):
 
         self.output_panel.set_generating(True)
         self.output_panel.clear_log()
-
-        thread = threading.Thread(target=self._generate_worker, daemon=True)
-        thread.start()
+        threading.Thread(target=self._generate_worker, daemon=True).start()
 
     def _generate_worker(self):
         try:
@@ -188,11 +202,8 @@ class MainWindow(ttk.Window):
             day_number = (report_date - start_date).days
             day_str = f"D{day_number}"
             day_date_str = report_date.strftime("%Y%m%d")
-            output_path = os.path.join(
-                output_dir,
-                f"{prefix}{dept_title}-{day_date_str}-{day_str}.docx")
+            output_path = os.path.join(output_dir, f"{prefix}{dept_title}-{day_date_str}-{day_str}.docx")
 
-            # Fetch weather if enabled
             weather_text = ""
             if self.config_panel.weather_enabled_var.get():
                 weather_text = self.config_panel.get_weather_text()
@@ -203,29 +214,29 @@ class MainWindow(ttk.Window):
                         try:
                             cities = WeatherService.search_city(city)
                             if cities:
-                                w = WeatherService.fetch_weather(
-                                    cities[0].latitude, cities[0].longitude,
-                                    report_date)
-                                if w:
-                                    weather_text = w.format_line()
-                        except Exception as we:
-                            self._log(f"天氣抓取失敗: {we}")
+                                weather = WeatherService.fetch_weather(
+                                    cities[0].latitude,
+                                    cities[0].longitude,
+                                    report_date,
+                                )
+                                if weather:
+                                    weather_text = weather.format_line()
+                        except Exception as exc:
+                            self._log(f"天氣抓取失敗: {exc}")
 
-            # Extract tasks
             self._log("載入 Excel 資料...")
             processor = ExcelProcessor(excel_path, sheet_name)
             processor.load()
             shipyard_tasks, engine_room_tasks = processor.extract_tasks(report_date)
-            self._log(
-                f"找到船廠工程 {len(shipyard_tasks)} 筆，自修 {len(engine_room_tasks)} 筆")
+            self._log(f"找到船廠工程 {len(shipyard_tasks)} 筆，自修 {len(engine_room_tasks)} 筆")
 
-            # Generate report
             self._log(f"使用模板: {os.path.basename(template_path)}")
             generator = ReportGenerator(template_path)
             table_layout = self.output_panel.get_table_layout()
-            self._log(f"部門: {dept_title}  /  表格版面: {table_layout}")
+            self._log(f"部門: {dept_title} / 表格版面: {table_layout}")
             if weather_text:
                 self._log(f"天氣資訊: {weather_text}")
+
             generator.generate(
                 target_date=report_date,
                 start_date=start_date,
@@ -238,13 +249,9 @@ class MainWindow(ttk.Window):
             )
             self._log(f"報告已儲存: {output_path}")
 
-            # Create photo folders
             self._log("建立照片資料夾...")
-            new_shipyard = (generator._filter_new_tasks(shipyard_tasks)
-                            if generator.doc else shipyard_tasks)
-            new_engine = (generator._filter_new_tasks(engine_room_tasks)
-                          if generator.doc else engine_room_tasks)
-
+            new_shipyard = generator._filter_new_tasks(shipyard_tasks) if generator.doc else shipyard_tasks
+            new_engine = generator._filter_new_tasks(engine_room_tasks) if generator.doc else engine_room_tasks
             created = FolderCreator.create_photo_folders(
                 photo_root=output_dir,
                 day_date_str=day_date_str,
@@ -253,26 +260,25 @@ class MainWindow(ttk.Window):
             )
             self._log(f"已建立 {len(created)} 個資料夾")
 
-            # Save config
             self.config_panel.save_to_settings()
             self.settings.template_path = template_path
             self.settings.table_layout = table_layout
             self.config_manager.save(self.settings)
 
             self._log("完成！")
-            self.after(0, lambda: self.output_panel.update_preview(
-                len(shipyard_tasks), len(engine_room_tasks)))
+            self.after(0, lambda: self.output_panel.update_preview(len(shipyard_tasks), len(engine_room_tasks)))
             self.after(0, lambda: self.output_panel.set_generating(False))
-            self.after(0, lambda: Messagebox.show_info(
-                f"報告已儲存至:\n{output_path}\n\n照片資料夾也已建立。",
-                title="完成",
-            ))
-
-        except Exception as e:
-            self._log(f"錯誤: {e}")
+            self.after(
+                0,
+                lambda: Messagebox.show_info(
+                    f"報告已儲存至:\n{output_path}\n\n照片資料夾也已建立。",
+                    title="完成",
+                ),
+            )
+        except Exception as exc:
+            self._log(f"錯誤: {exc}")
             self.after(0, lambda: self.output_panel.set_generating(False))
-            self.after(0, lambda: Messagebox.show_error(
-                f"產生報告失敗:\n{e}", title="錯誤"))
+            self.after(0, lambda: Messagebox.show_error(f"產生報告失敗:\n{exc}", title="錯誤"))
 
     def _log(self, message: str):
         self.after(0, lambda: self.output_panel.log(message))

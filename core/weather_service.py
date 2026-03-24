@@ -1,10 +1,18 @@
 import json
+import os
 import re
+import ssl
 import urllib.request
 import urllib.parse
+from urllib.error import HTTPError, URLError
 from datetime import datetime, timedelta
 from dataclasses import dataclass
 from typing import Optional
+
+try:
+    import certifi
+except ImportError:  # pragma: no cover - optional at runtime
+    certifi = None
 
 
 # ── CJK city name → English fallback map ──────────────────────────────────
@@ -185,10 +193,32 @@ class WeatherService:
     ARCHIVE_URL = "https://archive-api.open-meteo.com/v1/archive"
 
     @staticmethod
-    def _fetch_json(url: str) -> dict:
+    def _build_ssl_context() -> ssl.SSLContext:
+        """Prefer a bundled CA file so frozen builds can verify HTTPS reliably."""
+        if certifi is not None:
+            try:
+                cafile = certifi.where()
+                if cafile and os.path.exists(cafile):
+                    return ssl.create_default_context(cafile=cafile)
+            except Exception:
+                pass
+        return ssl.create_default_context()
+
+    @classmethod
+    def _fetch_json(cls, url: str) -> dict:
         req = urllib.request.Request(url, headers={"User-Agent": "ReportHelper/2.0"})
-        with urllib.request.urlopen(req, timeout=10) as resp:
-            return json.loads(resp.read().decode("utf-8"))
+        try:
+            with urllib.request.urlopen(req, timeout=10, context=cls._build_ssl_context()) as resp:
+                return json.loads(resp.read().decode("utf-8"))
+        except HTTPError as exc:
+            raise RuntimeError(f"天氣服務回應錯誤（HTTP {exc.code}）") from exc
+        except ssl.SSLError as exc:
+            raise RuntimeError(f"天氣服務 SSL 驗證失敗：{exc}") from exc
+        except URLError as exc:
+            reason = getattr(exc, "reason", exc)
+            raise RuntimeError(f"無法連線到天氣服務：{reason}") from exc
+        except json.JSONDecodeError as exc:
+            raise RuntimeError("天氣服務回傳資料格式錯誤") from exc
 
     @classmethod
     def search_city(cls, name: str, country_code: str = "") -> list:
@@ -264,20 +294,17 @@ class WeatherService:
         })
         url = f"{base}?{params}"
 
-        try:
-            data = cls._fetch_json(url)
-            daily = data.get("daily", {})
-            temp_list = daily.get("temperature_2m_mean", [])
-            hum_list = daily.get("relative_humidity_2m_mean", [])
-            code_list = daily.get("weather_code", [])
+        data = cls._fetch_json(url)
+        daily = data.get("daily", {})
+        temp_list = daily.get("temperature_2m_mean", [])
+        hum_list = daily.get("relative_humidity_2m_mean", [])
+        code_list = daily.get("weather_code", [])
 
-            if temp_list and hum_list and code_list:
-                return WeatherData(
-                    temperature=temp_list[0],
-                    humidity=hum_list[0],
-                    weather_code=int(code_list[0]),
-                )
-        except Exception:
-            pass
+        if temp_list and hum_list and code_list:
+            return WeatherData(
+                temperature=temp_list[0],
+                humidity=hum_list[0],
+                weather_code=int(code_list[0]),
+            )
 
         return None

@@ -1,11 +1,16 @@
 import json
 import os
 from config.app_settings import AppSettings
+from core.path_utils import get_app_path
 
 
 class ConfigManager:
     def __init__(self, config_path: str = "last_paths.json"):
-        self.config_path = config_path
+        self.config_path = (
+            config_path
+            if os.path.isabs(config_path)
+            else get_app_path(config_path)
+        )
 
     def load(self) -> AppSettings:
         if os.path.exists(self.config_path):

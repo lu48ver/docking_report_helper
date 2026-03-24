@@ -1,0 +1,3 @@
+APP_NAME = "塢修報告產生器"
+APP_VERSION = "3.0.1"
+APP_RELEASE_DATE = "2026-03-24"

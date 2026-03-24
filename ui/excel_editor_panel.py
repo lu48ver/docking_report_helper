@@ -1,8 +1,9 @@
 import os
+from datetime import datetime
+
+import tksheet
 import ttkbootstrap as ttk
 from ttkbootstrap.constants import *
-from datetime import datetime
-import tksheet
 
 from ui.constants import BTN_SAVE, BTN_UTILITY
 
@@ -19,75 +20,79 @@ class ExcelEditorPanel(ttk.Frame):
         self._build_ui()
 
     def _build_ui(self):
-        # ── Toolbar ──────────────────────────────────────────────────────
-        # Uses Toolbar.TFrame style (registered in main_window._configure_styles)
-        # for a subtle light-grey background that distinguishes it from the sheet.
-        toolbar = ttk.Frame(self, style="Toolbar.TFrame", padding=(16, 7))
-        toolbar.pack(fill=X)
+        page = ttk.Frame(self, style="Page.TFrame", padding=(22, 22, 22, 16))
+        page.pack(fill=BOTH, expand=True)
+        page.columnconfigure(0, weight=1)
+        page.rowconfigure(1, weight=1)
 
-        # Primary action
-        ttk.Button(toolbar, text="儲存變更", command=self._save_changes,
-                   bootstyle=BTN_SAVE, width=10).pack(side=LEFT, padx=(0, 4))
+        toolbar = ttk.Frame(page, style="Surface.TFrame", padding=(18, 14))
+        toolbar.grid(row=0, column=0, sticky=EW, pady=(0, 14))
+        toolbar.columnconfigure(2, weight=1)
 
-        # Vertical divider
-        ttk.Separator(toolbar, orient="vertical").pack(
-            side=LEFT, fill=Y, padx=(4, 8))
+        action_row = ttk.Frame(toolbar, style="Surface.TFrame")
+        action_row.grid(row=0, column=0, sticky=W)
+        ttk.Button(
+            action_row,
+            text="儲存變更",
+            command=self._save_changes,
+            bootstyle=BTN_SAVE,
+            width=10,
+        ).pack(side=LEFT, padx=(0, 8))
+        ttk.Button(
+            action_row,
+            text="重新載入",
+            command=self._reload,
+            bootstyle=BTN_UTILITY,
+            width=10,
+        ).pack(side=LEFT)
 
-        # Secondary action
-        ttk.Button(toolbar, text="重新載入", command=self._reload,
-                   bootstyle=BTN_UTILITY, width=9).pack(side=LEFT)
+        ttk.Separator(toolbar, orient="vertical").grid(row=0, column=1, sticky=NS, padx=16)
 
-        # Vertical divider
-        ttk.Separator(toolbar, orient="vertical").pack(
-            side=LEFT, fill=Y, padx=(8, 12))
+        meta = ttk.Frame(toolbar, style="Surface.TFrame")
+        meta.grid(row=0, column=2, sticky=E)
+        ttk.Label(meta, text="目前檔案", style="ToolbarCaption.TLabel").grid(row=0, column=0, sticky=E)
+        self.file_label = ttk.Label(meta, text="尚未載入 Excel", style="ToolbarMeta.TLabel")
+        self.file_label.grid(row=0, column=1, sticky=W, padx=(8, 0))
+        ttk.Label(meta, text="資料規模", style="ToolbarCaption.TLabel").grid(
+            row=0, column=2, sticky=E, padx=(18, 0)
+        )
+        self.dimension_label = ttk.Label(meta, text="0 列 × 0 欄", style="ToolbarMeta.TLabel")
+        self.dimension_label.grid(row=0, column=3, sticky=W, padx=(8, 0))
 
-        # File info — filename / sheet / row × col
-        self.info_label = ttk.Label(toolbar, text="尚未載入 Excel",
-                                    style="Toolbar.TLabel", font=("", 9))
-        self.info_label.pack(side=LEFT)
+        self.modified_label = ttk.Label(toolbar, text="", style="WarningHint.TLabel")
+        self.modified_label.grid(row=0, column=3, sticky=E, padx=(18, 0))
 
-        # Unsaved indicator (right side)
-        self.modified_label = ttk.Label(toolbar, text="",
-                                        bootstyle="warning",
-                                        font=("", 9, "bold"))
-        self.modified_label.pack(side=RIGHT, padx=(8, 2))
+        sheet_frame = ttk.Frame(page, style="Surface.TFrame")
+        sheet_frame.grid(row=1, column=0, sticky=NSEW)
+        sheet_frame.columnconfigure(0, weight=1)
+        sheet_frame.rowconfigure(0, weight=1)
 
-        # ── Separator between toolbar and sheet ───────────────────────────
-        ttk.Separator(self, orient="horizontal").pack(fill=X)
-
-        # ── Spreadsheet — maximized, fills all remaining space ────────────
         self.sheet = tksheet.Sheet(
-            self,
+            sheet_frame,
             show_x_scrollbar=True,
             show_y_scrollbar=True,
         )
-        self.sheet.pack(fill=BOTH, expand=True)
-
-        # Enable all interactive features
+        self.sheet.grid(row=0, column=0, sticky=NSEW)
         self.sheet.enable_bindings()
-
-        # Track modifications
         self.sheet.extra_bindings([
-            ("end_edit_cell",   self._on_cell_edit),
-            ("end_paste",       self._on_cell_edit),
-            ("end_delete",      self._on_cell_edit),
+            ("end_edit_cell", self._on_cell_edit),
+            ("end_paste", self._on_cell_edit),
+            ("end_delete", self._on_cell_edit),
             ("end_insert_rows", self._on_cell_edit),
             ("end_delete_rows", self._on_cell_edit),
         ])
 
-        # ── Status bar ────────────────────────────────────────────────────
-        ttk.Separator(self, orient="horizontal").pack(fill=X)
-        status = ttk.Frame(self, padding=(16, 3))
-        status.pack(fill=X)
-        self.status_label = ttk.Label(status, text="",
-                                      bootstyle="secondary", font=("", 8))
-        self.status_label.pack(side=LEFT)
-
-    # ── Data loading ──────────────────────────────────────────────────────
+        status = ttk.Frame(page, style="StatusBar.TFrame", padding=(14, 8))
+        status.grid(row=2, column=0, sticky=EW, pady=(12, 0))
+        status.columnconfigure(1, weight=1)
+        ttk.Label(status, text="狀態", style="StatusCaption.TLabel").grid(row=0, column=0, sticky=W)
+        self.status_label = ttk.Label(status, text="尚未載入檔案", style="StatusValue.TLabel")
+        self.status_label.grid(row=0, column=1, sticky=W, padx=(8, 0))
 
     def load_excel(self, path: str, sheet_name: str):
         from core.excel_processor import ExcelProcessor
-        self.info_label.config(text="載入中…")
+
+        self.file_label.config(text="載入中…")
         self.update_idletasks()
         try:
             self._processor = ExcelProcessor(path, sheet_name)
@@ -105,26 +110,25 @@ class ExcelEditorPanel(ttk.Frame):
 
             row_count = len(data)
             col_count = len(headers)
-            fname = os.path.basename(path)
-            self.info_label.config(
-                text=f"{fname}  [{sheet_name}]   {row_count} 列 × {col_count} 欄")
+            filename = os.path.basename(path)
+            self.file_label.config(text=f"{filename} / {sheet_name}")
+            self.dimension_label.config(text=f"{row_count} 列 × {col_count} 欄")
             self.status_label.config(text=f"已載入: {path}")
             self.is_modified = False
             self.modified_label.config(text="")
-
-        except Exception as e:
+        except Exception as exc:
             from ttkbootstrap.dialogs import Messagebox
-            Messagebox.show_error(f"載入 Excel 失敗:\n{e}", title="錯誤")
 
-    # ── Internal callbacks ────────────────────────────────────────────────
+            Messagebox.show_error(f"載入 Excel 失敗:\n{exc}", title="錯誤")
 
     def _on_cell_edit(self, event):
         self.is_modified = True
-        self.modified_label.config(text="● 未儲存")
+        self.modified_label.config(text="未儲存變更")
 
     def _save_changes(self):
         if not self._excel_path or not self._processor:
             from ttkbootstrap.dialogs import Messagebox
+
             Messagebox.show_error("尚未載入 Excel 檔案", title="錯誤")
             return
         try:
@@ -135,31 +139,30 @@ class ExcelEditorPanel(ttk.Frame):
             self.modified_label.config(text="")
             now = datetime.now().strftime("%H:%M:%S")
             self.status_label.config(text=f"已儲存 ({now})")
-        except Exception as e:
+        except Exception as exc:
             from ttkbootstrap.dialogs import Messagebox
-            Messagebox.show_error(f"儲存失敗:\n{e}", title="錯誤")
+
+            Messagebox.show_error(f"儲存失敗:\n{exc}", title="錯誤")
 
     def _reload(self):
         if self._excel_path and self._sheet_name:
             if self.is_modified:
                 from ttkbootstrap.dialogs import Messagebox
-                result = Messagebox.yesno(
-                    "有未儲存的變更，確定要重新載入嗎？", title="確認")
+
+                result = Messagebox.yesno("有未儲存的變更，確定要重新載入嗎？", title="確認")
                 if result != "Yes":
                     return
             self.load_excel(self._excel_path, self._sheet_name)
 
     def check_unsaved(self) -> bool:
-        """Returns True if it's OK to proceed, False if user cancelled."""
         if not self.is_modified:
             return True
         from ttkbootstrap.dialogs import Messagebox
-        result = Messagebox.yesnocancel(
-            "有未儲存的 Excel 變更，要先儲存嗎？", title="未儲存的變更")
+
+        result = Messagebox.yesnocancel("有未儲存的 Excel 變更，要先儲存嗎？", title="未儲存的變更")
         if result == "Yes":
             self._save_changes()
             return True
-        elif result == "No":
+        if result == "No":
             return True
-        else:
-            return False
+        return False

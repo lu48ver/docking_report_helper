@@ -1,29 +1,54 @@
-# ui/constants.py — 全域 UI 常數 (v3)
-# 所有面板 import 這裡的常數，保持視覺一致性
+# ui/constants.py
 
-# ── Padding 系統 ──────────────────────────────────────
-PX      = 20          # 頁面水平邊距
-PY_S    = (20, 4)     # 一般 section 間距 (top, bottom-before-body)
-PY_B    = (20, 24)    # 最後一個 section（多留底部空間）
-PYW     = 6           # widget 上下間距
+# Spacing system
+PAGE_PAD_X = 22
+PAGE_PAD_Y = 22
+SECTION_GAP = 22
+FIELD_GAP_Y = 10
+FIELD_GAP_X = 10
+LABEL_INPUT_GAP = 8
+SECTION_PAD = 18
+COMPACT_SECTION_PAD = 14
 
-# ── 字體 ─────────────────────────────────────────────
-SECTION_FONT = ("", 9, "bold")    # Section 標題字體
-HINT_FONT    = ("", 9)            # 提示文字字體
-LOG_FONT     = ("Consolas", 9)    # 執行記錄字體
+# Legacy aliases kept for compatibility with older imports
+PX = PAGE_PAD_X
+PY_S = (SECTION_GAP, 0)
+PY_B = (SECTION_GAP, PAGE_PAD_Y)
+PYW = FIELD_GAP_Y // 2
 
-# ── Label 寬度 ────────────────────────────────────────
-LBL_W   = 10          # 標準標籤欄寬（確保表單對齊）
+# Typography
+UI_FONT = "Microsoft JhengHei UI"
+SECTION_FONT = (UI_FONT, 10, "bold")
+SECTION_DESC_FONT = (UI_FONT, 9)
+HINT_FONT = (UI_FONT, 9)
+BODY_FONT = (UI_FONT, 10)
+VALUE_FONT = (UI_FONT, 11, "bold")
+HERO_FONT = (UI_FONT, 18, "bold")
+LOG_FONT = ("Consolas", 9)
 
-# ── Card 樣式 token（由 main_window._configure_styles() 注冊為 ttk Style）──
-CARD_BG = "#eaf0fb"   # D-day / 輸出摘要卡：淡藍底色
-CARD_FG = "#2c5fad"   # 對應深藍文字
+# Sizing
+LBL_W = 10
+SHORT_INPUT_W = 18
+MEDIUM_INPUT_W = 24
 
-# ── 按鈕 bootstyle 語義 ───────────────────────────────
-BTN_BROWSE    = "secondary-outline"   # 瀏覽…、開啟資料夾
-BTN_UTILITY   = "secondary-outline"   # 重新整理、重新載入
-BTN_ACTION    = "secondary-outline"   # 今天、搜尋等次要動作
-BTN_PRIMARY   = "primary"             # 每個 section 的主要操作
-BTN_ADD       = "primary-outline"     # 新增類操作
-BTN_GENERATE  = "success"             # 產生報告
-BTN_SAVE      = "success"             # 儲存
+# Palette
+APP_BG = "#edf1f5"
+SURFACE_BG = "#ffffff"
+SURFACE_MUTED_BG = "#f7f9fc"
+SURFACE_SUBTLE_BG = "#f3f5f8"
+BORDER_COLOR = "#d7dde5"
+TEXT_COLOR = "#243042"
+TEXT_MUTED = "#6c7785"
+ACCENT_BG = "#e9f1ff"
+ACCENT_FG = "#1f4f9f"
+SUCCESS_BG = "#e9f8ef"
+SUCCESS_FG = "#1f6a43"
+
+# Button roles
+BTN_BROWSE = "secondary-outline"
+BTN_UTILITY = "secondary-outline"
+BTN_ACTION = "secondary-outline"
+BTN_PRIMARY = "primary"
+BTN_ADD = "primary-outline"
+BTN_GENERATE = "success"
+BTN_SAVE = "success"
