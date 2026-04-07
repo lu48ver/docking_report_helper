@@ -4,6 +4,9 @@
 
 目前正式版: `v3.0.1`（2026-03-24）
 
+下載最新版：
+[Google Drive - ReportHelper 下載資源](https://drive.google.com/file/d/1P_ooEOgjLgmm4f0WM5gfyzqR5T8BIXlD/view?usp=drivesdk)
+
 ## 最新版本重點
 
 - 修正 `exe` 版天氣查詢在封裝後失效的問題
